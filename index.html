@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claim Ledger — event-sourced denial management for behavioral health</title>
+<meta name="description" content="An event-sourced revenue-cycle workbench for outpatient behavioral health: X12 837/277/835 claim lifecycle, CARC/RARC denial triage, and a deterministic remediation lane.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;550;650&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <h1>Claim Ledger</h1>
+      <span class="tag">event-sourced RCM</span>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="clockline">outpatient behavioral health · posting date <span id="today"></span></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p class="note" style="margin:18px 0 0;max-width:940px">
+    A working revenue-cycle workbench for an outpatient behavioral-health group. Every claim is an
+    append-only event log — <code class="mono">ClaimDrafted → ClaimScrubbed → ClaimSubmitted (837P) →
+    ClaimAcknowledged (277CA) → RemittanceReceived (835)</code> — and claim state is a left fold over
+    that log, so the audit trail is free and any claim can be replayed to a prior state. Denials are
+    triaged by <em>expected recoverable dollars</em> rather than raw balance, then split into a
+    deterministic lane a machine can clear and a lane that genuinely needs a human.
+  </p>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>Denial work queue <span class="h2spacer"></span><span class="count" id="queueCount"></span></h2>
+        <div class="controls" id="controls"></div>
+        <div class="queue" id="queue"></div>
+      </div>
+      <p class="note" id="batchNote" style="margin:11px 2px 0"></p>
+
+      <div class="panel" style="margin-top:18px">
+        <h2>Denial mix by reason code</h2>
+        <div id="mix"></div>
+        <div style="padding:11px 16px" class="note">
+          Teal is the modeled recoverable portion; the dark remainder is what the playbook expects to
+          lose. Sorting the book this way is what surfaces that a high-volume code like CO-45 is pure
+          contractual noise while a mid-volume CO-197 is where the recoverable money actually sits.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel detail" id="detailPanel">
+      <h2>Claim detail</h2>
+      <div id="detail"></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <p style="margin:0 0 9px"><strong style="color:var(--ink-2)">How it is built.</strong>
+      <code>engine.js</code> is a pure reducer: <code>apply(state, event) → state</code> with an explicit
+      legal-transition table, so an out-of-order 835 raises <code>InvalidTransition</code> instead of
+      silently walking a paid claim backwards. <code>replay()</code> rebuilds any claim from its log.
+      The scrubber runs the pre-submission edits that keep a claim from being denied in the first place
+      (POS 10 without modifier 95, missing diagnosis pointer, malformed NPI, timely-filing cliffs).
+      No framework, no build step — open devtools and call <code>ledger.replay()</code>.</p>
+    <p style="margin:0">Reference data is real: CARC/RARC adjustment codes from the X12 835 CAS and LQ
+      segments, behavioral-health CPT codes with plausible allowed amounts, and payer-specific timely
+      filing and appeal windows. Claim volume is synthetic and seeded — no patient data of any kind.</p>
+  </footer>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
